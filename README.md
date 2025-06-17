@@ -3,7 +3,7 @@
 ## 🏆 Awarded:
 **🥇 1st Place & Best Project Overall**  
 *Stats Under the Stars 8 Hackathon* (#SUS8)  
-Organized by [Società Italiana di Statistica](https://www.datachallenge.it/competitions/257) & [Rulex](https://www.rulex.ai)
+Organized by [Società Italiana di Statistica](https://sis2025.sis-statistica.it/) & [Rulex](https://www.rulex.ai)
 
 ---
 
