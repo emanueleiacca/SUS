@@ -79,12 +79,8 @@ This allowed us to blend LightGBM's deep local patterns with XGBoost's strong re
 
 ---
 
-## 📁 (Project Structure)[https://uithub.com/emanueleiacca/SUS]
-
 ## 📎 Resources
 
-- 📂 [Full Report PDF](./sus2025.pdf)  
-- 🔗 [GitHub Repository](https://lnkd.in/dJ4B9SPn)  
 - 📄 [Competition Website](https://www.datachallenge.it/competitions/257)  
 - 🌐 [SUS 2025 Info](https://sites.google.com/view/sus2025-statsunderthestars/)
 
