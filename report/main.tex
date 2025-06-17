@@ -1,0 +1,146 @@
+\documentclass[a4paper]{article}
+\usepackage{graphicx}
+\usepackage{twocolceurws}
+\usepackage{authblk} 
+\usepackage{amsmath}
+
+
+\title{Mapping Illicit Flows: A Machine Learning Approach to Anti-Money Laundring}
+
+\author{
+Emanuele Iaccarino\textsuperscript{1} \quad
+Giuseppina Iannotti\textsuperscript{1} \quad
+Alessia Migneco\textsuperscript{1} \quad
+Sara Pantini\textsuperscript{1}
+}
+
+\institution{
+\textsuperscript{1} Sapienza University of Rome
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Money laundering poses a significant threat to the integrity of global financial systems by enabling organized crime and terrorism. Detecting such illicit activities is challenging due to their rarity, delayed verification, and the deliberate mimicry of legitimate transactions. Traditional rule-based systems often fail to identify sophisticated laundering schemes, necessitating more advanced approaches. This work proposes an ensemble model combining XGBoost and LightGBM, leveraging their complementary strengths to improve detection performance. We focus on extracting structural and topological features from transactional data to uncover anomalous patterns indicative of money laundering. The proposed ensemble method is evaluated on both real and synthetic datasets, demonstrating strong accuracy, scalability, and generalization capabilities.
+\end{abstract}
+
+\section{Introduction}
+
+Money laundering represents one of the most serious and persistent threats to the integrity of global economic and financial systems. Beyond undermining the stability of financial markets, it serves as a critical tool for organized crime and terrorist activities.
+Detecting money laundering activities presents numerous inherent challenges. These include the rarity of illicit events, the delayed confirmation of suspicious activities, and the deliberate effort by criminals to mimic legitimate financial behavior to evade detection.
+Effectively countering these practices requires the development of advanced tools capable of identifying atypical patterns and anomalous behaviors, often hidden within large volumes of financial data. Although many financial institutions currently rely on rule-based systems to generate Suspicious Activity Reports, such approaches often prove insufficient to detect laundering schemes.
+In response to these limitations, recent years have seen growing interest in machine learning techniques, which offer a more flexible and scalable framework. In this context, the present work explores innovative computational approaches for detecting suspicious money laundering activities, with particular focus on extracting structural and topological features capable of highlighting anomalies. These methods are evaluated in terms of accuracy, scalability, and generalization capabilities on both real and synthetic datasets.
+The goal of this work is to demonstrate the effectiveness of the proposed approach in identifying suspicious behaviors, thereby contributing to the fight against money laundering in the financial sector.
+The report is organized as follows. Section \ref{sec:method} presents the methodology. Section \ref{sec:experiments} shows the experimental results, including parameter initialization. Finally, Section \ref{sec:conclusion} discusses the main results of the project and outlines possible future directions.
+
+\section{Key EDA Findings and DataEng}
+
+During the exploratory data analysis phase, we uncovered several meaningful behavioral patterns related to laundering activity. Each of these findings was translated into specific feature engineering choices that enriched our modeling strategy:
+
+\begin{itemize}
+    \item \textbf{Directional Account Transitions:} We observed certain high-risk transactional flows. 
+
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[width=0.75\linewidth]{jskdnfkj.png}
+        \label{fig:laundering_matrix}
+    \end{figure}
+
+
+    \item \textbf{High-Risk Payment Methods}
+
+    \item \textbf{Self-Transfers Across Account Types:} Transfers made by users to themselves across different account types were not correlated at all with laundering.
+
+    \item \textbf{Multi-Account User Profiles:} Users holding multiple account types under the same ID—up to 6 total—had a substantially higher probability of laundering activity.
+
+    \item \textbf{Repetitive Peer Interactions:} We observed a clear pattern where users frequently sending or receiving funds from the same counterpart had a higher laundering probability. This lead to the inclusion of \textit{in-degree} and \textit{out-degree centrality} as node-level graph features. 
+
+    \item \textbf{Use of Intermediaries in Cycles:} Some users acted as intermediaries in laundering chains, forming cycles that eventually reached the final beneficiary. To detect this, we used betweenness centrality to identify structurally important nodes in laundering pathways.
+
+    \item \textbf{Feature Transformation:} To ensure stability, we applied logarithmic transformations to the high-variance numerical features. 
+\end{itemize}
+
+\section{Method}
+\label{sec:method}
+This section details the machine learning pipeline developed for the detection of money laundering transactions. The proposed methodology combines structural insights derived from transaction graphs with predictive modeling using two gradient boosting algorithms: \textbf{XGBoost} and \textbf{LightGBM}. These models are independently trained and later fused through a weighted ensemble to strengthen predictive performance.
+
+\subsection{Graph-Based Feature Engineering}
+To capture the relational structure among entities in the transactional data, a directed graph \( G = (V, E) \) was constructed, where each node \( v \in V \) represents a financial account and each directed edge \( e = (u \rightarrow v) \in E \) corresponds to a monetary transaction from account \( u \) to account \( v \).
+From this graph structure, several features were derived. The \textit{pair frequency}, defined as the number of transactions from \( u \) to \( v \), is given by:
+\begin{equation}
+\text{pair\_frequency}(u, v) = |\{ e \in E \mid e = (u \rightarrow v) \}|
+\end{equation}
+To identify bidirectional patterns often associated with circular or reciprocal laundering, the \textit{reverse pair frequency} was computed analogously:
+\begin{equation}
+\text{reverse\_pair\_frequency}(u, v) = |\{ e \in E \mid e = (v \rightarrow u) \}|
+\end{equation}
+Using these values, a binary feature was introduced to indicate whether a transaction was part of a circular structure:
+\begin{equation}
+\text{is\_circular}(u, v) =
+\begin{cases}
+1 & \text{if } \text{reverse\_pair\_frequency}(u, v) > 0 \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+In addition, \textit{betweenness centrality} was computed for each account to assess its role as an intermediary in the network. For a node \( v \), its betweenness centrality is defined as:
+\begin{equation}
+C_B(v) = \sum_{\substack{s \neq v \neq t}} \frac{\sigma_{st}(v)}{\sigma_{st}}
+\end{equation}
+where \( \sigma_{st} \) is the total number of shortest paths from node \( s \) to node \( t \), and \( \sigma_{st}(v) \) is the number of those paths that pass through \( v \). This measure was mapped separately to the sender and receiver of each transaction, providing an additional layer of topological insight to the learning models.
+\subsection{Machine Learning Models}
+The classification problem was addressed using two supervised learning algorithms based on gradient boosting: \textbf{LightGBM} and \textbf{XGBoost}. These models were selected due to their proven effectiveness in handling high-dimensional structured data and imbalanced classification tasks.
+LightGBM, based on histogram binning and leaf-wise tree growth, enables fast training and high scalability. Its ability to construct deeper trees allows for learning fine-grained patterns in the data. Conversely, XGBoost grows trees in a level-wise fashion and includes \( L_1 \) and \( L_2 \) regularization terms to penalize model complexity. This helps mitigate overfitting and improves generalization.
+Both models were trained on the same feature set, which included graph-based and transactional attributes. Class imbalance, a common challenge in fraud detection, was explicitly addressed by setting the scale of positive class weights inversely proportional to their prevalence in the training data. The training process was conducted using stratified cross-validation to maintain consistent class distributions across folds.
+\subsection{Model Ensembling}
+To enhance robustness and leverage the complementary strengths of the two models, a probabilistic ensemble was constructed. The final predicted probability for each transaction was obtained by a convex combination of the individual model outputs:
+\begin{equation}
+P_{\text{final}} = \alpha \cdot P_{\text{LGBM}} + (1 - \alpha) \cdot P_{\text{XGBoost}}
+\end{equation}
+In this study, the ensemble weight was set to \( \alpha = 0.4 \), favoring the LightGBM model slightly less than XGBoost based on validation performance. This formulation benefits from LightGBM’s ability to exploit local structures and XGBoost’s strong regularization properties, leading to a more balanced and generalizable predictive model.
+\subsection{Final Prediction Pipeline}
+Following training, the ensemble model was applied to the test dataset, which had been preprocessed and feature-engineered in an identical manner to the training data. The ensemble output produced a probabilistic fraud score for each transaction. Final binary classification labels were obtained by applying a fixed decision threshold, and both the probabilities and class predictions were retained for downstream analysis and evaluation.
+\section{Experiments}
+\label{sec:experiments}
+To optimize our models for fraud detection under extreme class imbalance, we used \textbf{Optuna}, an automatic hyperparameter optimization framework. Specifically, we adopted the \textit{Tree-structured Parzen Estimator} (TPE) sampler, a Bayesian optimization algorithm that models. At each iteration, TPE selects new hyperparameters by maximizing the expected improvement over the best score observed so far. Our objective function used 5-fold stratified cross-validation and returned a composite metric mentioned before.\\
+We now present a comparative evaluation of the XGBoost and LightGBM models applied to our task. Both models were trained and tested under identical conditions.  In particular, the models are compared across three key performance metrics: AUC, Balanced Accuracy, and Fraud Capture Rate. The results, summarized in Tab. \ref{tab:tabella}, highlight the relative strengths of each model in detecting fraudulent activity under different evaluation perspectives.
+\begin{table}[h]
+\label{tab:tabella}
+\centering
+\caption{Performance Comparison Between LGBM and XGBoost (Transposed)}
+\begin{tabular}{lcc}
+\hline
+\textbf{Metric} & \textbf{XGBoost} & \textbf{LGBM} \\
+\hline
+AUC & 0.9987 & 0.9985 \\
+Balanced Accuracy & 0.9972 & 0.9972 \\
+Fraud Capture Rate & 0.9963 & 0.9963 \\
+Composite Score & 0.9974 & 0.9973 \\
+\hline
+\end{tabular}
+\end{table}
+While both XGBoost and LightGBM performed strongly on their own, the ensemble model, proposed in \ref{sec:method}, marginally improved the overall composite score. The combination benefitted from the precision of XGBoost and the deep tree learning of LightGBM. Notably, as shown in \ref{tab:tabella2}, the ensemble preserved the high fraud capture rate while slightly boosting AUC and balanced accuracy.
+\begin{table}[htbp]
+\label{tab:tabella2}
+\centering
+\small
+\caption{Performance Metrics Ensemble Model}
+\begin{tabular}{lcc}
+\hline
+\textbf{Metric} & \textbf{Ensemble} \\
+\hline
+AUC & 0.90 \\
+Balanced Accuracy & 0.79 \\
+Fraud Capture Rate & 0.87 \\
+Composite Score & 0.85 \\
+\hline
+\end{tabular}
+\end{table}
+\section{Conclusion}
+\label{sec:conclusion}
+The preliminary evaluation on one-third of the test set yields a composite score of 0.71928, computed as the arithmetic mean of AUC, Balanced Accuracy, and Fraud Capture Rate. This result is particularly meaningful given the extreme class imbalance in the dataset, which renders standard evaluation metrics insufficient.
+The score reflects the model’s strong discriminative power, its balanced performance across classes, and its effectiveness in prioritizing the most suspicious transactions for manual review. 
+In summary, the results demonstrate that the model is not only capable of identifying laundering transactions effectively, but also aligns with the practical constraints and priorities of operational anti-money laundering processes.
+\end{document}
+
+
